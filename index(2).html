@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Control de Gastos</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { background: #f0f2f5; min-height: 100vh; padding: 20px; }
+  .container { max-width: 600px; margin: 0 auto; }
+  h1 { text-align: center; color: #1a1a2e; margin-bottom: 8px; font-size: 1.6rem; }
+  .sub { text-align: center; color: #777; margin-bottom: 20px; font-size: .9rem; }
+
+  .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 16px; }
+
+  .total-box { background: linear-gradient(135deg, #10b981, #047857); color: #fff; text-align: center; }
+  .total-box .label { font-size: .85rem; opacity: .85; }
+  .total-box .amount { font-size: 2.2rem; font-weight: 700; }
+
+  label { display: block; font-size: .8rem; color: #555; margin-bottom: 4px; margin-top: 12px; }
+  input, select { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 1rem; }
+  input:focus, select:focus { outline: none; border-color: #10b981; }
+
+  .btn { width: 100%; margin-top: 16px; padding: 12px; border: none; border-radius: 8px;
+         background: #10b981; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: #059669; }
+
+  .filters { display: flex; gap: 10px; }
+  .filters select { flex: 1; }
+
+  .expense-item { display: flex; justify-content: space-between; align-items: center;
+                  padding: 12px 4px; border-bottom: 1px solid #eee; }
+  .expense-item:last-child { border-bottom: none; }
+  .expense-info .cat { font-size: .78rem; background: #e7f8f0; color: #047857; padding: 2px 8px; border-radius: 10px; }
+  .expense-info .desc { font-weight: 600; color: #333; margin-top: 3px; }
+  .expense-info .date { font-size: .75rem; color: #999; }
+  .expense-right { display: flex; align-items: center; gap: 10px; }
+  .expense-right .amount { font-weight: 700; color: #1a1a2e; }
+  .del-btn { background: none; border: none; color: #ccc; cursor: pointer; font-size: 1.1rem; }
+  .del-btn:hover { color: #e74c3c; }
+  .empty { text-align: center; color: #aaa; padding: 20px; }
+  .cat-total { font-size: .85rem; color: #777; margin-top: 6px; }
+
+  /* ===== Pantalla de inicio ===== */
+  .home-screen {
+    position: fixed; inset: 0; z-index: 100;
+    background: linear-gradient(160deg, #34d399 0%, #065f46 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; text-align: center; padding: 30px;
+    transition: opacity .45s ease, visibility .45s;
+  }
+  .home-screen.hidden { opacity: 0; visibility: hidden; }
+  .home-logo {
+    width: 110px; height: 110px; border-radius: 28px;
+    background: rgba(255,255,255,.15); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3.2rem; font-weight: 700; margin-bottom: 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  }
+  .home-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
+  .home-sub { font-size: .95rem; opacity: .85; margin-bottom: 30px; }
+  .home-summary {
+    background: rgba(255,255,255,.12); border-radius: 16px; padding: 18px 34px;
+    margin-bottom: 34px; backdrop-filter: blur(4px);
+  }
+  .home-summary .lbl { font-size: .8rem; opacity: .85; }
+  .home-summary .val { font-size: 2rem; font-weight: 700; }
+  .home-summary .count { font-size: .8rem; opacity: .75; margin-top: 4px; }
+  .home-btn {
+    background: #fff; color: #065f46; border: none; border-radius: 30px;
+    padding: 14px 46px; font-size: 1.05rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0,0,0,.25); transition: transform .15s;
+  }
+  .home-btn:active { transform: scale(.96); }
+  .home-foot { position: absolute; bottom: 26px; font-size: .75rem; opacity: .6; }
+
+  .home-nav-btn {
+    position: fixed; top: 14px; left: 14px; z-index: 90;
+    width: 40px; height: 40px; border-radius: 12px; border: none;
+    background: rgba(16,185,129,.14); color: #047857; font-size: 1.15rem;
+    cursor: pointer; display: none; align-items: center; justify-content: center;
+  }
+
+  /* ===== Proyección ===== */
+  .proj-grid { display: flex; flex-direction: column; gap: 10px; }
+  .proj-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px; }
+  .proj-row .p-lbl { font-size: .82rem; color: #666; }
+  .proj-row .p-val { font-weight: 700; color: #1a1a2e; font-size: 1rem; }
+  .proj-main { text-align: center; padding: 6px 0 10px; border-bottom: 1px dashed #eee; margin-bottom: 6px; }
+  .proj-main .lbl { font-size: .78rem; color: #888; }
+  .proj-main .val { font-size: 1.7rem; font-weight: 700; color: #059669; }
+  .proj-note { font-size: .72rem; color: #aaa; margin-top: 8px; text-align: center; }
+
+  /* ===== Imágenes ===== */
+  .home-logo img { width: 86px; height: 86px; filter: drop-shadow(0 8px 18px rgba(0,0,0,.35)); }
+  .empty-img { width: 90px; height: 90px; display: block; margin: 6px auto; opacity: .9; }
+  .cat-img { width: 22px; height: 22px; vertical-align: -5px; margin-right: 5px; }
+  .proj-ico { width: 26px; height: 26px; vertical-align: -6px; margin-right: 6px; }
+</style>
+<meta name="theme-color" content="#10b981">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<div class="home-screen" id="homeScreen">
+  <div class="home-logo"><img src="logo.png" alt="Logo"></div>
+  <div class="home-title">Mi Control de Gastos</div>
+  <div class="home-sub">Tus finanzas, simples y claras</div>
+  <div class="home-summary">
+    <div class="lbl" id="homeLbl">Este mes</div>
+    <div class="val" id="homeTotal">$0.00</div>
+    <div class="count" id="homeCount">0 gastos registrados</div>
+  </div>
+  <button class="home-btn" onclick="enterApp()">Comenzar ➜</button>
+  <div class="home-foot">💾 Tus datos se guardan en este dispositivo</div>
+</div>
+<button class="home-nav-btn" id="homeNavBtn" onclick="goHome()" title="Inicio">⌂</button>
+
+<div class="container">
+
+  <h1>💰 Mi Control de Gastos</h1>
+  <p class="sub">Tus datos se guardan automáticamente en este dispositivo</p>
+
+  <div class="card total-box">
+    <div class="label" id="totalLabel">Total de gastos</div>
+    <div class="amount" id="totalAmount">$0.00</div>
+    <div class="cat-total" id="catTotals" style="color:#fff;opacity:.85"></div>
+  </div>
+
+  
+  <div class="card">
+    <div class="proj-main">
+      <div class="lbl" id="projLabel"><img class="proj-ico" src="proj.png" alt="">Proyección de este mes</div>
+      <div class="val" id="projMonth">—</div>
+    </div>
+    <div class="proj-grid">
+      <div class="proj-row"><span class="p-lbl">💸 Gastado hasta hoy</span><span class="p-val" id="projSpent">—</span></div>
+      <div class="proj-row"><span class="p-lbl">📅 Promedio diario</span><span class="p-val" id="projDaily">—</span></div>
+      <div class="proj-row"><span class="p-lbl">🔮 Estimado próximo mes</span><span class="p-val" id="projNext">—</span></div>
+    </div>
+    <div class="proj-note" id="projNote"></div>
+  </div>
+<div class="card">
+    <label for="desc">Descripción</label>
+    <input type="text" id="desc" placeholder="Ej. Comida en restaurante" maxlength="50">
+
+    <label for="amount">Monto</label>
+    <input type="number" id="amount" placeholder="Ej. 150.50" min="0" step="0.01">
+
+    <label for="category">Categoría</label>
+    <select id="category">
+      <option value="Comida">🍔 Comida</option>
+      <option value="Transporte">🚗 Transporte</option>
+      <option value="Vivienda">🏠 Vivienda</option>
+      <option value="Servicios">💡 Servicios</option>
+      <option value="Ocio">🎮 Ocio</option>
+      <option value="Salud">💊 Salud</option>
+      <option value="Compras">🛍️ Compras</option>
+      <option value="Otros">📦 Otros</option>
+    </select>
+
+    <label for="date">Fecha</label>
+    <input type="date" id="date">
+
+    <button class="btn" onclick="addExpense()">➕ Agregar gasto</button>
+  </div>
+
+  <div class="card">
+    <div class="filters">
+      <select id="filterCat" onchange="render()">
+        <option value="">Todas las categorías</option>
+        <option value="Comida">Comida</option>
+        <option value="Transporte">Transporte</option>
+        <option value="Vivienda">Vivienda</option>
+        <option value="Servicios">Servicios</option>
+        <option value="Ocio">Ocio</option>
+        <option value="Salud">Salud</option>
+        <option value="Compras">Compras</option>
+        <option value="Otros">Otros</option>
+      </select>
+      <select id="filterMonth" onchange="render()">
+        <option value="">Todos los meses</option>
+      </select>
+    </div>
+    <div id="list" style="margin-top: 10px;"></div>
+  </div>
+</div>
+
+<script>
+let expenses = JSON.parse(localStorage.getItem('gastos') || '[]');
+
+function save() { localStorage.setItem('gastos', JSON.stringify(expenses)); if (typeof updateHome === 'function') updateHome(); if (typeof calcProjection === 'function') calcProjection(); }
+
+function fmt(n) { return '$' + n.toFixed(2); }
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+const CAT_ICONS = {
+  'Comida': 'cat-comida.png', 'Transporte': 'cat-transporte.png',
+  'Vivienda': 'cat-vivienda.png', 'Servicios': 'cat-servicios.png',
+  'Ocio': 'cat-ocio.png', 'Salud': 'cat-salud.png',
+  'Compras': 'cat-compras.png', 'Otros': 'cat-otros.png'
+};
+function catIcon(c) { return '<img class="cat-img" src="' + (CAT_ICONS[c] || 'cat-otros.png') + '" alt="">'; }
+
+function addExpense() {
+  const desc = document.getElementById('desc').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value);
+  const category = document.getElementById('category').value;
+  const date = document.getElementById('date').value;
+  if (!desc || isNaN(amount) || amount <= 0 || !date) { alert('Completa todos los campos con valores válidos.'); return; }
+  expenses.push({ id: Date.now(), desc, amount, category, date });
+  save();
+  document.getElementById('desc').value = '';
+  document.getElementById('amount').value = '';
+  render();
+}
+
+function delExpense(id) { expenses = expenses.filter(e => e.id !== id); save(); render(); }
+
+function monthLabel(d) {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const [y, m] = d.split('-');
+  return months[parseInt(m) - 1] + ' ' + y;
+}
+
+function render() {
+  const fCat = document.getElementById('filterCat').value;
+  const fMonth = document.getElementById('filterMonth').value;
+  let filtered = expenses.filter(e => (!fCat || e.category === fCat) && (!fMonth || e.date.startsWith(fMonth)));
+
+  const total = filtered.reduce((s, e) => s + e.amount, 0);
+  document.getElementById('totalAmount').textContent = fmt(total);
+  document.getElementById('totalLabel').textContent = fMonth ? 'Total de ' + monthLabel(fMonth + '-01') : 'Total de gastos';
+
+  const byCat = {};
+  filtered.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+  document.getElementById('catTotals').textContent = Object.entries(byCat)
+    .map(([c, v]) => c + ': ' + fmt(v)).join(' · ');
+
+  const list = document.getElementById('list');
+  if (!filtered.length) { list.innerHTML = '<div class="empty"><img class="empty-img" src="empty.png" alt="Sin gastos">Sin gastos registrados<br>¡Agrega tu primer gasto! 🌱</div>'; return; }
+  list.innerHTML = filtered.slice().reverse().map(e => `
+    <div class="expense-item">
+      <div class="expense-info">
+        <span class="cat">${catIcon(e.category)}${e.category}</span>
+        <div class="desc">${esc(e.desc)}</div>
+        <div class="date">${e.date}</div>
+      </div>
+      <div class="expense-right">
+        <span class="amount">${fmt(e.amount)}</span>
+        <button class="del-btn" onclick="delExpense(${e.id})" title="Eliminar">✖</button>
+      </div>
+    </div>`).join('');
+}
+
+function fillMonths() {
+  const sel = document.getElementById('filterMonth');
+  const months = [...new Set(expenses.map(e => e.date.slice(0, 7)))].sort().reverse();
+  sel.innerHTML = '<option value="">Todos los meses</option>' + months.map(m =>
+    `<option value="${m}">${monthLabel(m + '-01')}</option>`).join('');
+}
+
+
+function enterApp() {
+  document.getElementById('homeScreen').classList.add('hidden');
+  document.getElementById('homeNavBtn').style.display = 'flex';
+}
+function goHome() {
+  updateHome();
+  document.getElementById('homeScreen').classList.remove('hidden');
+  document.getElementById('homeNavBtn').style.display = 'none';
+}
+function updateHome() {
+  const now = new Date();
+  const prefix = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const monthExp = expenses.filter(e => e.date.startsWith(prefix));
+  const total = monthExp.reduce((s, e) => s + e.amount, 0);
+  document.getElementById('homeLbl').textContent = 'Total de ' + months[now.getMonth()];
+  document.getElementById('homeTotal').textContent = fmt(total);
+  document.getElementById('homeCount').textContent = monthExp.length + (monthExp.length === 1 ? ' gasto registrado' : ' gastos registrados');
+}
+updateHome();
+
+
+function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+function calcProjection() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  const prefix = y + '-' + String(m).padStart(2, '0');
+  const daysTotal = daysInMonth(y, m);
+  const dayNow = now.getDate();
+
+  // Gastos del mes actual
+  const monthExp = expenses.filter(e => e.date.startsWith(prefix));
+  const spent = monthExp.reduce((s, e) => s + e.amount, 0);
+
+  // Proyección del mes actual: ritmo diario × días del mes
+  let projM = '—', note = '';
+  if (spent > 0 && dayNow > 0) {
+    const daily = spent / dayNow;
+    projM = fmt(daily * daysTotal);
+    if (dayNow === daysTotal) note = 'Último día del mes: proyección = gasto real.';
+    else note = 'Estimado con tu ritmo de los últimos ' + dayNow + ' días.';
+  } else {
+    note = 'Registra gastos para calcular la proyección.';
+  }
+
+  // Estimación del próximo mes: promedio de meses completos anteriores
+  const byMonth = {};
+  expenses.forEach(e => {
+    const k = e.date.slice(0, 7);
+    byMonth[k] = (byMonth[k] || 0) + e.amount;
+  });
+  const currentKey = prefix;
+  const prevMonths = Object.keys(byMonth).filter(k => k < currentKey).sort();
+  let projNext = '—';
+  if (prevMonths.length) {
+    const use = prevMonths.slice(-3); // últimos 3 meses con gastos
+    const avg = use.reduce((s, k) => s + byMonth[k], 0) / use.length;
+    projNext = fmt(avg);
+  }
+
+  document.getElementById('projLabel').textContent = 'Proyección de ' +
+    ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m - 1];
+  document.getElementById('projMonth').textContent = projM;
+  document.getElementById('projSpent').textContent = fmt(spent);
+  document.getElementById('projDaily').textContent = spent > 0 ? fmt(spent / dayNow) + ' /día' : '—';
+  document.getElementById('projNext').textContent = projNext;
+  document.getElementById('projNote').textContent = note;
+}
+calcProjection();
+
+// Inicializar
+document.getElementById('date').valueAsDate = new Date();
+fillMonths();
+render();
+// actualizar lista de meses tras cada cambio
+const _save = save;
+save = function() { _save(); fillMonths(); };
+</script>
+
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
